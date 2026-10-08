@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HSI 多维度K线原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg0:#050810; --bg1:#0c1220; --bg2:#111a2b; --line:#1a2540;
+  --cyan:#22d3ee; --up:#f87171; --down:#34d399; --amber:#fbbf24; --violet:#818cf8;
+  --t1:rgba(255,255,255,1); --t2:rgba(255,255,255,.72); --t3:rgba(255,255,255,.48);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:var(--bg0);color:var(--t1);
+  font-family:"JetBrains Mono","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px;overflow:hidden}
+/* subtle scanline texture */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 3px)}
+
+header{height:46px;display:flex;align-items:center;gap:14px;padding:0 16px;
+  border-bottom:1px solid var(--line);background:var(--bg1);position:relative;z-index:10}
+.logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:13px;
+  letter-spacing:.14em}
+.logo .radar{width:14px;height:14px;border-radius:50%;border:1px solid var(--cyan);
+  position:relative;overflow:hidden}
+.logo .radar::before{content:"";position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0 270deg,rgba(34,211,238,.9) 360deg);
+  animation:sweep 4.2s linear infinite}
+@keyframes sweep{to{transform:rotate(360deg)}}
+.logo em{font-style:normal;color:var(--cyan)}
+.badge{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.18em;
+  color:var(--down);border:1px solid var(--line);padding:3px 9px;border-radius:999px;
+  background:var(--bg2);text-transform:uppercase}
+.badge .dot{width:6px;height:6px;border-radius:50%;background:var(--down);
+  animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+.hdr-meta{margin-left:auto;font-size:11px;color:var(--t3);letter-spacing:.06em}
+.hdr-meta b{color:var(--t2);font-weight:500}
+
+main{display:grid;grid-template-columns:272px 1fr;height:calc(100% - 46px - 30px)}
+
+/* ---- left panel ---- */
+aside{border-right:1px solid var(--line);background:var(--bg1);overflow-y:auto;
+  padding:14px 0}
+aside::-webkit-scrollbar{width:6px}
+aside::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.sec{padding:10px 16px 14px;border-bottom:1px solid var(--line)}
+.sec h2{font-size:10px;font-weight:500;letter-spacing:.22em;color:var(--t3);
+  text-transform:uppercase;margin-bottom:11px;display:flex;align-items:center;gap:8px}
+.sec h2::after{content:"";flex:1;height:1px;background:var(--line)}
+
+.dim{display:flex;gap:10px;padding:8px 0;cursor:pointer;user-select:none}
+.dim input{display:none}
+.node{flex:none;width:16px;height:16px;border-radius:50%;border:1px solid var(--t3);
+  margin-top:2px;position:relative;transition:border-color .15s}
+.node::after{content:"";position:absolute;inset:4px;border-radius:50%;
+  background:transparent;transition:all .15s}
+.dim.on .node{border-color:var(--dc,#22d3ee);
+  box-shadow:0 0 8px 0 color-mix(in srgb,var(--dc,#22d3ee) 55%,transparent)}
+.dim.on .node::after{background:var(--dc,#22d3ee)}
+.dim .tx b{display:block;font-weight:500;font-size:12px;color:var(--t1)}
+.dim .tx span{display:block;font-size:10.5px;color:var(--t3);line-height:1.5;margin-top:2px}
+.dim.off .tx b{color:var(--t3)}
+
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.chip{font-size:10px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;
+  color:var(--t2);background:var(--bg2);cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--cyan);color:var(--cyan)}
+.chip.active{background:rgba(34,211,238,.12);border-color:var(--cyan);color:var(--cyan)}
+
+.note{font-size:10.5px;color:var(--t3);line-height:1.7}
+.note b{color:var(--t2);font-weight:500}
+.up{color:var(--up)} .dn{color:var(--down)} .am{color:var(--amber)} .cy{color:var(--cyan)}
+
+/* ---- chart ---- */
+#stage{position:relative;background:var(--bg0);min-width:0}
+canvas{display:block;width:100%;height:100%;cursor:crosshair}
+#tip{position:absolute;pointer-events:none;z-index:20;display:none;min-width:218px;
+  background:rgba(12,18,32,.92);border:1px solid var(--line);border-radius:8px;
+  backdrop-filter:blur(8px);padding:10px 12px;font-size:11px;line-height:1.65;
+  box-shadow:0 8px 24px rgba(0,0,0,.5)}
+#tip .d{color:var(--t2);font-weight:700;letter-spacing:.08em;margin-bottom:4px;
+  border-bottom:1px solid var(--line);padding-bottom:5px}
+#tip .row{display:flex;justify-content:space-between;gap:14px}
+#tip .k{color:var(--t3)}
+#tip .v{color:var(--t1);font-variant-numeric:tabular-nums}
+#tip .sep{border-top:1px dashed var(--line);margin:5px 0 4px}
+
+footer{height:30px;display:flex;align-items:center;gap:18px;padding:0 16px;
+  border-top:1px solid var(--line);background:var(--bg1);font-size:10.5px;
+  color:var(--t3);letter-spacing:.05em}
+footer .keys{margin-left:auto;display:flex;gap:14px}
+footer .keys b{color:var(--t2);font-weight:500}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="radar"></span>HSI <em>MD-K</em> 多维度K线原型</div>
+  <div class="badge"><span class="dot"></span>恒生指数 · 日线 · v0.3 全景版</div>
+  <div class="hdr-meta">数据源 <b>Yahoo Finance (^HSI)</b> · <b id="hdrRange"></b> · <b id="hdrN"></b> 根K线</div>
+</header>
+
+<main>
+  <aside>
+    <div class="sec">
+      <h2>维度编码开关</h2>
+      <label class="dim on" data-dim="width" style="--dc:#22d3ee">
+        <input type="checkbox" checked><span class="node"></span>
+        <span class="tx"><b>D1 · 宽度 = 量比</b><span>K线宽度 ∝ 成交量 / 20日均量。越宽=越放量</span></span>
+      </label>
+      <label class="dim on" data-dim="sat" style="--dc:#f87171">
+        <input type="checkbox" checked><span class="node"></span>
+        <span class="tx"><b>D2 · 饱和度 = 收盘强度</b><span>收盘越靠近当日极值，颜色越饱和；灰白=犹豫十字星</span></span>
+      </label>
+      <label class="dim on" data-dim="atr" style="--dc:#fbbf24">
+        <input type="checkbox" checked><span class="node"></span>
+        <span class="tx"><b>D3 · 光晕 = 波动率状态</b><span>ATR(14) 处于一年高分位时K线发光描边</span></span>
+      </label>
+      <label class="dim on" data-dim="chan" style="--dc:#818cf8">
+        <input type="checkbox" checked><span class="node"></span>
+        <span class="tx"><b>D4 · 缠论结构</b><span>顶/底分型标记（▲▼）+ 简化中枢区间色带（未处理包含关系）</span></span>
+      </label>
+      <label class="dim on" data-dim="fib" style="--dc:#fbbf24">
+        <input type="checkbox" checked><span class="node"></span>
+        <span class="tx"><b>D5 · Fibonacci 时间窗</b><span>自锚点起第 8/13/21/34/55/89 根K线的时间标记</span></span>
+      </label>
+      <label class="dim on" data-dim="breadth" style="--dc:#f472b6">
+        <input type="checkbox" checked><span class="node"></span>
+        <span class="tx"><b>D6 · 成份股广度</b><span>底部热力条=12只权重股涨跌家数比；指数涨但广度≤35%时标"假阳"警示点</span></span>
+      </label>
+      <label class="dim off" data-dim="eqvol" style="--dc:#22d3ee">
+        <input type="checkbox"><span class="node"></span>
+        <span class="tx"><b>D7 · 等成交额轴</b><span>横轴从时间换成成交额：放量日自动展宽，盘整日压缩（开启后 D1 失效）</span></span>
+      </label>
+      <label class="dim on" data-dim="weekly" style="--dc:#a78bfa">
+        <input type="checkbox" checked><span class="node"></span>
+        <span class="tx"><b>D8 · 周线级别嵌套</b><span>背景色=周线笔方向（淡红↑/淡绿↓），紫底=周线中枢，紫色粗线=周线笔</span></span>
+      </label>
+      <label class="dim on" data-dim="alert" style="--dc:#fbbf24">
+        <input type="checkbox" checked><span class="node"></span>
+        <span class="tx"><b>D9 · 转折点预警（合成）</b><span>底警=放量恐慌+收最低+高波+南向抄底 4选3；顶警=广度背离+赶顶+南向流出/放量 3选2。南向净买入显示为底部第二热力条</span></span>
+      </label>
+    </div>
+
+    <div class="sec">
+      <h2>Fib 时间锚点</h2>
+      <div class="chips" id="anchorChips">
+        <span class="chip active" data-a="low">期内最低</span>
+        <span class="chip" data-a="high">期内最高</span>
+      </div>
+      <p class="note" style="margin-top:8px" id="anchorInfo"></p>
+    </div>
+
+    <div class="sec">
+      <h2>对照</h2>
+      <label class="dim off" data-dim="classic" style="--dc:#94a3b8">
+        <input type="checkbox"><span class="node"></span>
+        <span class="tx"><b>经典K线模式</b><span>关闭全部维度编码，对照传统K线</span></span>
+      </label>
+    </div>
+
+    <div class="sec">
+      <h2>读图说明</h2>
+      <p class="note">
+        <b class="up">红涨</b> / <b class="dn">绿跌</b>（港股惯例）。<br>
+        一根“又宽又亮还带光晕”的阳线 = <b class="cy">放量 + 坚决 + 高波动</b>，三维共振一眼可读。<br><br>
+        <b>D6 广度</b>为 12 只权重股（约 56% 权重）的近似篮子，非全部成份股；贡献度按静态权重估算。<br><br>
+        缠论部分为简化实现：分型未做包含关系处理，中枢取最近三笔重叠区间，仅供验证“维度长在K线上”的读图体验。
+      </p>
+    </div>
+  </aside>
+
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="tip"></div>
+  </div>
+</main>
+
+<footer>
+  <span><a href="../index.html" style="color:#22d3ee;text-decoration:none">← 版本选择</a> · MD-K v0.3 · 维度上限 9 · 南向资金数据源：东方财富陆港通（百万港元）</span>
+  <span class="keys"><b>拖拽</b> 平移 · <b>滚轮</b> 缩放 · <b>悬停</b> 读数 · <b>双击</b> 复位</span>
+</footer>
+
+<script src="../data.js"></script>
+<script src="../breadth.js"></script>
+<script src="../southflow.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
