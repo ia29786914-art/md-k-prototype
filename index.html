@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多維度K線原型 · 版本選擇</title>
+<style>
+:root{--bg:#050810;--panel:#0c1220;--line:#1a2540;--cy:#22d3ee;--up:#f87171;--dn:#34d399;--am:#fbbf24;--vi:#818cf8;--t1:#e2e8f0;--t2:#94a3b8;--t3:#64748b}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--t1);font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace,"PingFang HK","PingFang TC","Microsoft JhengHei",sans-serif;min-height:100vh;display:flex;flex-direction:column}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(60% 40% at 50% 0%,rgba(34,211,238,.06),transparent 70%)}
+header{padding:26px 32px 0;display:flex;align-items:center;gap:12px}
+.logo{font-size:15px;letter-spacing:.5px;display:flex;align-items:center;gap:9px}
+.radar{width:9px;height:9px;border-radius:50%;background:var(--cy);box-shadow:0 0 10px var(--cy);animation:pu 2.2s infinite}
+@keyframes pu{0%,100%{opacity:1}50%{opacity:.35}}
+.logo em{font-style:normal;color:var(--cy)}
+.badge{font-size:11px;color:var(--t2);border:1px solid var(--line);border-radius:99px;padding:4px 12px;background:var(--panel)}
+main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;gap:34px}
+h1{font-size:26px;font-weight:700;letter-spacing:1px;text-align:center}
+h1 span{color:var(--cy)}
+.sub{color:var(--t2);font-size:13px;text-align:center;max-width:640px;line-height:1.9;margin-top:-20px}
+.cards{display:flex;gap:26px;flex-wrap:wrap;justify-content:center}
+.card{width:400px;max-width:92vw;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px 26px 22px;text-decoration:none;color:inherit;position:relative;overflow:hidden;transition:transform .18s,border-color .18s,box-shadow .18s;display:block}
+.card:hover{transform:translateY(-4px);border-color:var(--cy);box-shadow:0 12px 40px rgba(34,211,238,.12)}
+.card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px}
+.card.v3::before{background:linear-gradient(90deg,var(--cy),var(--vi))}
+.card.v4::before{background:linear-gradient(90deg,var(--am),var(--up))}
+.ver{font-size:22px;font-weight:700;letter-spacing:1px}
+.ver small{font-size:12px;color:var(--t2);font-weight:400;margin-left:10px;letter-spacing:0}
+.card.v4 .ver small{color:var(--am)}
+.tag{display:inline-block;margin-top:12px;font-size:11px;padding:3px 10px;border-radius:4px;letter-spacing:.5px}
+.v3 .tag{background:rgba(34,211,238,.12);color:var(--cy)}
+.v4 .tag{background:rgba(251,191,36,.12);color:var(--am)}
+.desc{margin-top:14px;font-size:12px;color:var(--t2);line-height:1.9}
+.desc b{color:var(--t1);font-weight:600}
+.go{margin-top:18px;font-size:12px;color:var(--cy);letter-spacing:.5px}
+.v4 .go{color:var(--am)}
+.meta{margin-top:4px;font-size:11px;color:var(--t3);line-height:1.8}
+footer{padding:0 32px 22px;text-align:center;font-size:11px;color:var(--t3);line-height:1.9}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="radar"></span>HSI <em>MD-K</em> 多維度K線原型</div>
+  <div class="badge">恒生指數 · 日線 · 數據截至 2026-10-06</div>
+</header>
+
+<main>
+  <h1>多維度K線 · <span>雙版本工作台</span></h1>
+  <p class="sub">兩個版本共用同一份最新數據（恒指日線 1661 根，2020-01-02 → 2026-10-06 · 12 隻權重股廣度籃子 · 南向資金至 2026-09-30）。v0.3 保留原始 9 維編碼全貌，v0.4 在 v0.3 基礎上按兩年回測結論收斂預警參數。</p>
+
+  <div class="cards">
+    <a class="card v3" href="v03/index.html">
+      <div class="ver">v0.3<small>全景版</small></div>
+      <span class="tag">9 維編碼 · 原始預警</span>
+      <div class="desc">
+        <b>底警</b>：放量恐慌 + 收最低 + 高波環境 + 南向抄底，4 選 3。<br>
+        <b>頂警</b>：廣度背離 + 趕頂 + 南向流出/放量，3 選 2。<br>
+        訊號更多、覆蓋更廣，適合觀察各維度共振的全貌。
+      </div>
+      <div class="go">進入 v0.3 →</div>
+      <div class="meta">底警 ▲ 綠色 · 頂警 ▼ 琥珀色（標分數）</div>
+    </a>
+
+    <a class="card v4" href="v04/index.html">
+      <div class="ver">v0.4<small>回測調優版</small></div>
+      <span class="tag">兩年回測 · 參數收斂</span>
+      <div class="desc">
+        <b>底警</b>：3 腿嚴苛 3 選 3（剔除無效的 ATR 腿），回測提升 5.1x。<br>
+        <b>頂警兩級</b>：減倉 = 3 選 2 早提示；做空 = 背離 + 趕頂雙確認。<br>
+        訊號更少更準，適合實盤盯轉折點。
+      </div>
+      <div class="go">進入 v0.4 →</div>
+      <div class="meta">底警 ▲ 綠色 · 減倉 ▽ 琥珀空心 · 做空 ▼ 紅色</div>
+    </a>
+  </div>
+</main>
+
+<footer>
+  數據源：Yahoo Finance（^HSI 及權重股）· 東方財富陸港通（南向淨買入，百萬港元）<br>
+  紅漲綠跌（港股慣例）· 僅作研究原型，不構成投資建議
+</footer>
+</body>
+</html>
