@@ -66,11 +66,14 @@ def yahoo_daily(symbol, p1=START, p2=TODAY):
     q = (res.get("indicators") or {}).get("quote") or [{}]
     q = q[0]
     out = []
+    trailing_null_dates = []
     for i, t in enumerate(ts):
+        dt = datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d")
         c = (q.get("close") or [None] * len(ts))[i]
         if c is None:
+            if out:  # 只處理尾部未填充的 bar（歷史空洞直接跳過）
+                trailing_null_dates.append(dt)
             continue
-        dt = datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d")
         out.append([
             dt,
             q["open"][i],
@@ -79,7 +82,54 @@ def yahoo_daily(symbol, p1=START, p2=TODAY):
             c,
             int(q["volume"][i]) if q.get("volume") and q["volume"][i] is not None else 0,
         ])
+    # Yahoo 日線偶爾滯後：最近交易日已收市但日線 bar 還是 null。
+    # 用小時線聚合補上；量為 0 時用近 20 日非零中位數暫代（下次運行會自動修正）。
+    if trailing_null_dates:
+        hb = hourly_aggregates(symbol)
+        recent_vols = sorted(r[5] for r in out[-25:] if r[5] > 0)
+        med_vol = recent_vols[len(recent_vols) // 2] if recent_vols else 0
+        for dt in trailing_null_dates:
+            if dt in hb:
+                o, h, l, c, v = hb[dt]
+                if v == 0:
+                    v = med_vol
+                    print(f"  WARNING: {symbol} {dt} 量能缺失，暫以近20日中位數 {v} 代替（下次運行修正）")
+                else:
+                    print(f"  NOTE: {symbol} {dt} 日線未填充，已用小時線聚合補上")
+                out.append([dt, o, h, l, c, v])
+        out.sort(key=lambda r: r[0])
     return out
+
+
+def hourly_aggregates(symbol):
+    """用 1h K 線把最近幾天聚合成日線 OHLCV（Yahoo 日線滯後時的後備）。"""
+    u = ("https://query1.finance.yahoo.com/v8/finance/chart/"
+         + urllib.parse.quote(symbol, safe="") + "?range=5d&interval=1h")
+    try:
+        d = fetch_json(u)
+        res = ((d.get("chart") or {}).get("result") or [None])[0]
+        if not res:
+            return {}
+        q = (res.get("indicators") or {}).get("quote") or [{}]
+        q = q[0]
+        agg = {}
+        for i, t in enumerate(res.get("timestamp") or []):
+            c = (q.get("close") or [None] * len(res["timestamp"]))[i]
+            if c is None:
+                continue
+            dt = datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d")
+            o = q["open"][i]; h = q["high"][i]; l = q["low"][i]
+            v = q.get("volume") or [0] * len(res["timestamp"])
+            v = int(v[i] or 0)
+            if dt not in agg:
+                agg[dt] = [o, h, l, c, v]
+            else:
+                a = agg[dt]
+                a[1] = max(a[1], h); a[2] = min(a[2], l); a[3] = c; a[4] += v
+        return agg
+    except Exception as e:  # noqa: BLE001
+        print(f"  WARNING: hourly fallback failed for {symbol}: {e}")
+        return {}
 
 
 def eastmoney_southbound():
