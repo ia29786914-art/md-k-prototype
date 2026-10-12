@@ -128,14 +128,27 @@ for (const z of wz.zones) {
 const FIBS = [8, 13, 21, 34, 55, 89, 144];
 let anchorIdx = 0;
 function setAnchor(type) {
-  let bi = 0;
-  for (let i = 1; i < N; i++) {
-    if (type === 'low' && L(i) < L(bi)) bi = i;
-    if (type === 'high' && H(i) > H(bi)) bi = i;
+  // 錨點 = 最近的底分型 / 頂分型；無分型時退回全區間極值
+  let bi = -1;
+  for (let i = N - 1; i >= 2; i--) {
+    if (type === 'low' && frac[i] === -1) { bi = i; break; }
+    if (type === 'high' && frac[i] === 1) { bi = i; break; }
+  }
+  let label;
+  if (bi < 0) {
+    bi = 0;
+    for (let i = 1; i < N; i++) {
+      if (type === 'low' && L(i) < L(bi)) bi = i;
+      if (type === 'high' && H(i) > H(bi)) bi = i;
+    }
+    label = type === 'low' ? '区间最低' : '区间最高';
+  } else {
+    label = type === 'low' ? '最近底分型' : '最近顶分型';
   }
   anchorIdx = bi;
-  document.getElementById('anchorInfo').innerHTML = '锚点：<b>' + D(bi) + '</b> ' +
-    (type === 'low' ? '最低 <b class="dn">' + L(bi).toFixed(0) : '最高 <b class="up">' + H(bi).toFixed(0)) + '</b>';
+  document.getElementById('anchorInfo').innerHTML = '锚点：<b>' + D(bi) + '</b> ' + label +
+    ' <b class="' + (type === 'low' ? 'dn' : 'up') + '">' +
+    (type === 'low' ? L(bi) : H(bi)).toFixed(0) + '</b>';
 }
 setAnchor('low');
 
@@ -514,9 +527,7 @@ function draw() {
 }
 
 /* ---------- 交互：悬停 ---------- */
-cv.addEventListener('mousemove', ev => {
-  const r = cv.getBoundingClientRect();
-  const mx = ev.clientX - r.left, my = ev.clientY - r.top;
+function showHover(mx, my) {
   const [s, e] = visibleRange();
   let i = -1;
   for (let k = s; k <= e; k++) {
@@ -580,6 +591,10 @@ cv.addEventListener('mousemove', ev => {
   const tw = tip.offsetWidth, th = tip.offsetHeight;
   tip.style.left = (mx + 18 + tw > W ? mx - tw - 14 : mx + 18) + 'px';
   tip.style.top = Math.min(Math.max(8, my - th / 2), Hh - th - 8) + 'px';
+}
+cv.addEventListener('mousemove', ev => {
+  const r = cv.getBoundingClientRect();
+  showHover(ev.clientX - r.left, ev.clientY - r.top);
 });
 cv.addEventListener('mouseleave', () => { tip.style.display = 'none'; draw(); });
 
@@ -605,7 +620,66 @@ cv.addEventListener('wheel', ev => {
 }, { passive: false });
 cv.addEventListener('dblclick', () => { view.end = N - 1; view.span = 90; draw(); });
 
+/* ---------- 交互：觸控（手機） ---------- */
+let tMode = null, tStartX = 0, tStartY = 0, tStartEnd = 0, tDist0 = 0, tSpan0 = 0,
+    tMoved = 0, tLastTap = 0;
+const clampEnd = () => {
+  view.end = Math.max(view.span * .5, Math.min(N - 1 + view.span * .3, view.end));
+};
+cv.addEventListener('touchstart', ev => {
+  if (ev.touches.length === 1) {
+    tMode = 'pan'; tMoved = 0;
+    tStartX = ev.touches[0].clientX; tStartY = ev.touches[0].clientY;
+    tStartEnd = view.end;
+  } else if (ev.touches.length === 2) {
+    tMode = 'pinch';
+    tDist0 = Math.hypot(ev.touches[0].clientX - ev.touches[1].clientX,
+                        ev.touches[0].clientY - ev.touches[1].clientY);
+    tSpan0 = view.span;
+  }
+  tip.style.display = 'none';
+}, { passive: true });
+cv.addEventListener('touchmove', ev => {
+  ev.preventDefault();
+  if (tMode === 'pan' && ev.touches.length === 1) {
+    const dx = ev.touches[0].clientX - tStartX;
+    tMoved = Math.max(tMoved, Math.abs(dx) + Math.abs(ev.touches[0].clientY - tStartY));
+    const slot = (W - PAD_L - PAD_R) / view.span;
+    view.end = tStartEnd - dx / slot;
+    clampEnd();
+    draw();
+  } else if (tMode === 'pinch' && ev.touches.length === 2) {
+    const d = Math.hypot(ev.touches[0].clientX - ev.touches[1].clientX,
+                         ev.touches[0].clientY - ev.touches[1].clientY);
+    if (tDist0 > 0 && d > 0) {
+      view.span = Math.max(20, Math.min(N, tSpan0 * tDist0 / d));
+      clampEnd();
+    }
+    draw();
+  }
+}, { passive: false });
+cv.addEventListener('touchend', ev => {
+  if (tMode === 'pan' && tMoved < 8 && ev.changedTouches.length) {
+    const now = Date.now();
+    if (now - tLastTap < 300) {          // 雙點：復位
+      tLastTap = 0;
+      view.end = N - 1; view.span = 90;
+      tip.style.display = 'none';
+      draw();
+    } else {                             // 單點：讀數
+      tLastTap = now;
+      const r = cv.getBoundingClientRect();
+      showHover(ev.changedTouches[0].clientX - r.left, ev.changedTouches[0].clientY - r.top);
+    }
+  }
+  if (!ev.touches.length) tMode = null;
+});
+
 /* ---------- 控件 ---------- */
+const asideEl = document.querySelector('aside');
+document.getElementById('panelBtn').addEventListener('click', () => {
+  asideEl.classList.toggle('open');
+});
 document.querySelectorAll('.dim').forEach(el => {
   el.addEventListener('click', ev => {
     ev.preventDefault();
