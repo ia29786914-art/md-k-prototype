@@ -193,6 +193,12 @@ def main():
         raise RuntimeError(f"2020-01-02 close drifted: {raw[0][4]} (source changed?)")
 
     # 與庫存數據對齊檢查：重疊區間收盤價偏差須 < 0.5%
+    # 最新一根量為 0（Yahoo 尚未填充）時暫以近20日中位數代替，下次運行自動修正
+    if raw[-1][5] == 0:
+        recent = sorted(r[5] for r in raw[-25:-1] if r[5] > 0)
+        if recent:
+            raw[-1][5] = recent[len(recent) // 2]
+            print(f"  WARNING: {raw[-1][0]} 量為0，暫以近20日中位數 {raw[-1][5]} 代替（下次運行修正）")
     old = read_existing("data.js", "RAW")
     if old:
         old_map = {r[0]: r[4] for r in old}
