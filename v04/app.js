@@ -128,13 +128,27 @@ for (const z of wz.zones) {
 const FIBS = [8, 13, 21, 34, 55, 89, 144];
 let anchorIdx = 0;
 function setAnchor(type) {
-  // 錨點 = 最近的底分型 / 頂分型；無分型時退回全區間極值
-  let bi = -1;
-  for (let i = N - 1; i >= 2; i--) {
-    if (type === 'low' && frac[i] === -1) { bi = i; break; }
-    if (type === 'high' && frac[i] === 1) { bi = i; break; }
+  // 頂 = 最近兩個底警之間的最高點；底 = 最近兩個頂警之間的最低點
+  // （v0.4 頂警取減倉+做空合併；預警不足時後備：最近分型 → 區間極值）
+  let bi = -1, label = '';
+  const marks = type === 'high' ? botAlerts
+    : [...topWarnAlerts, ...topShortAlerts].sort((x, y) => x - y);
+  if (marks.length >= 2) {
+    const a = marks[marks.length - 2], b = marks[marks.length - 1];
+    bi = a + 1;
+    for (let i = a + 2; i < b; i++) {
+      if (type === 'high' && H(i) > H(bi)) bi = i;
+      if (type === 'low' && L(i) < L(bi)) bi = i;
+    }
+    label = type === 'high' ? '底警間高點' : '頂警間低點';
   }
-  let label;
+  if (bi < 0) {
+    for (let i = N - 1; i >= 2; i--) {
+      if (type === 'low' && frac[i] === -1) { bi = i; break; }
+      if (type === 'high' && frac[i] === 1) { bi = i; break; }
+    }
+    if (bi >= 0) label = type === 'low' ? '最近底分型' : '最近顶分型';
+  }
   if (bi < 0) {
     bi = 0;
     for (let i = 1; i < N; i++) {
@@ -142,8 +156,6 @@ function setAnchor(type) {
       if (type === 'high' && H(i) > H(bi)) bi = i;
     }
     label = type === 'low' ? '区间最低' : '区间最高';
-  } else {
-    label = type === 'low' ? '最近底分型' : '最近顶分型';
   }
   anchorIdx = bi;
   document.getElementById('anchorInfo').innerHTML = '锚点：<b>' + D(bi) + '</b> ' + label +
@@ -211,6 +223,7 @@ const botAlerts = clusterAlerts(botScore, 3);
 const topShortAlerts = clusterAlerts(shortSig.map(x => x ? 1 : 0), 1);
 const topWarnAlerts = clusterAlerts(topScore, 2)
   .filter(i => !topShortAlerts.some(j => Math.abs(j - i) <= 5));
+setAnchor('low');   // 初始錨點，依賴 D9 預警數組
 
 /* ---------- 视图状态 ---------- */
 const cv = document.getElementById('cv');
