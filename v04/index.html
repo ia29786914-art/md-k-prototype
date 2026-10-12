@@ -94,6 +94,30 @@ footer{height:30px;display:flex;align-items:center;gap:18px;padding:0 16px;
   color:var(--t3);letter-spacing:.05em}
 footer .keys{margin-left:auto;display:flex;gap:14px}
 footer .keys b{color:var(--t2);font-weight:500}
+
+/* ---- 手機適配 ---- */
+#panelBtn{display:none}
+canvas{touch-action:none}
+@media (max-width:760px){
+  html,body{font-size:12px}
+  header{gap:8px;padding:0 10px}
+  .logo{font-size:11px;letter-spacing:.08em}
+  .badge{font-size:9px;padding:2px 7px}
+  .hdr-meta{display:none}
+  main{display:flex;flex-direction:column;height:calc(100% - 46px - 30px)}
+  #stage{flex:1;min-height:0}
+  aside{position:fixed;left:0;top:0;bottom:0;width:min(300px,86vw);z-index:60;
+    transform:translateX(-105%);transition:transform .22s ease;
+    box-shadow:0 0 40px rgba(0,0,0,.6)}
+  aside.open{transform:none}
+  #panelBtn{display:flex;position:fixed;right:12px;bottom:44px;z-index:55;
+    align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--cyan);
+    color:var(--cyan);font:inherit;font-size:11px;padding:8px 13px;border-radius:999px;
+    box-shadow:0 4px 16px rgba(0,0,0,.5);cursor:pointer}
+  #panelBtn:active{transform:scale(.94)}
+  #tip{max-width:76vw;font-size:10.5px;padding:8px 10px}
+  footer .keys{display:none}
+}
 </style>
 </head>
 <body>
@@ -105,6 +129,7 @@ footer .keys b{color:var(--t2);font-weight:500}
 </header>
 
 <main>
+  <button id="panelBtn" aria-label="开关维度面板">☰ 维度</button>
   <aside>
     <div class="sec">
       <h2>维度编码开关</h2>
@@ -126,7 +151,7 @@ footer .keys b{color:var(--t2);font-weight:500}
       </label>
       <label class="dim on" data-dim="fib" style="--dc:#fbbf24">
         <input type="checkbox" checked><span class="node"></span>
-        <span class="tx"><b>D5 · Fibonacci 时间窗</b><span>自锚点起第 8/13/21/34/55/89 根K线的时间标记</span></span>
+        <span class="tx"><b>D5 · Fibonacci 时间窗</b><span>自最近底/顶分型起第 8/13/21/34/55/89 根K线的时间标记</span></span>
       </label>
       <label class="dim on" data-dim="breadth" style="--dc:#f472b6">
         <input type="checkbox" checked><span class="node"></span>
@@ -149,8 +174,8 @@ footer .keys b{color:var(--t2);font-weight:500}
     <div class="sec">
       <h2>Fib 时间锚点</h2>
       <div class="chips" id="anchorChips">
-        <span class="chip active" data-a="low">期内最低</span>
-        <span class="chip" data-a="high">期内最高</span>
+        <span class="chip active" data-a="low">最近底分型</span>
+        <span class="chip" data-a="high">最近顶分型</span>
       </div>
       <p class="note" style="margin-top:8px" id="anchorInfo"></p>
     </div>
