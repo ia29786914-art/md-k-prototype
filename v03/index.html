@@ -151,7 +151,7 @@ canvas{touch-action:none}
       </label>
       <label class="dim on" data-dim="fib" style="--dc:#fbbf24">
         <input type="checkbox" checked><span class="node"></span>
-        <span class="tx"><b>D5 · Fibonacci 时间窗</b><span>自最近底/顶分型起第 8/13/21/34/55/89 根K线的时间标记</span></span>
+        <span class="tx"><b>D5 · Fibonacci 时间窗</b><span>底=兩個頂警間的低點、頂=兩個底警間的高點起第 8/13/21/34/55/89 根K線</span></span>
       </label>
       <label class="dim on" data-dim="breadth" style="--dc:#f472b6">
         <input type="checkbox" checked><span class="node"></span>
@@ -174,8 +174,8 @@ canvas{touch-action:none}
     <div class="sec">
       <h2>Fib 时间锚点</h2>
       <div class="chips" id="anchorChips">
-        <span class="chip active" data-a="low">最近底分型</span>
-        <span class="chip" data-a="high">最近顶分型</span>
+        <span class="chip active" data-a="low">頂警間低點</span>
+        <span class="chip" data-a="high">底警間高點</span>
       </div>
       <p class="note" style="margin-top:8px" id="anchorInfo"></p>
     </div>
