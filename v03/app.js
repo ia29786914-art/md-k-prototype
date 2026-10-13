@@ -127,7 +127,14 @@ for (const z of wz.zones) {
 /* ---------- D5 Fib 时间窗 ---------- */
 const FIBS = [8, 13, 21, 34, 55, 89, 144];
 let anchorIdx = 0;
-function setAnchor(type) {
+let anchorMode = 'low';
+function setAnchor(type, idx) {
+  anchorMode = type;
+  if (type === 'manual') {
+    anchorIdx = idx;
+    document.getElementById('anchorInfo').innerHTML = '锚点：<b>' + D(idx) + '</b> 手动指定 · 点击/点按图面移动锚点';
+    return;
+  }
   // 頂 = 最近兩個底警之間的最高點；底 = 最近兩個頂警之間的最低點
   // （預警不足時後備：最近分型 → 區間極值）
   let bi = -1, label = '';
@@ -611,17 +618,32 @@ cv.addEventListener('mousemove', ev => {
 cv.addEventListener('mouseleave', () => { tip.style.display = 'none'; draw(); });
 
 /* ---------- 交互：平移 / 缩放 / 复位 ---------- */
-let dragX = null;
-cv.addEventListener('mousedown', ev => { dragX = ev.clientX; cv.style.cursor = 'grabbing'; });
+function barAt(mx) {
+  const [s, e] = visibleRange();
+  for (let k = s; k <= e; k++)
+    if (mx >= LX(k) - LW(k) / 2 && mx < LX(k) + LW(k) / 2) return k;
+  return -1;
+}
+let dragX = null, dragMoved = 0;
+cv.addEventListener('mousedown', ev => { dragX = ev.clientX; dragMoved = 0; cv.style.cursor = 'grabbing'; });
 window.addEventListener('mouseup', () => { dragX = null; cv.style.cursor = 'crosshair'; });
 window.addEventListener('mousemove', ev => {
   if (dragX === null) return;
+  dragMoved += Math.abs(ev.clientX - dragX);
   const plotW = W - PAD_L - PAD_R, slot = plotW / view.span;
   view.end -= (ev.clientX - dragX) / slot;
   view.end = Math.max(view.span * .5, Math.min(N - 1 + view.span * .3, view.end));
   dragX = ev.clientX;
   tip.style.display = 'none';
   draw();
+});
+cv.addEventListener('click', ev => {
+  if (anchorMode !== 'manual' || dragMoved >= 5) return;
+  const r = cv.getBoundingClientRect();
+  const i = barAt(ev.clientX - r.left);
+  if (i < 0) return;
+  setAnchor('manual', i);
+  showHover(ev.clientX - r.left, ev.clientY - r.top);
 });
 cv.addEventListener('wheel', ev => {
   ev.preventDefault();
@@ -678,10 +700,15 @@ cv.addEventListener('touchend', ev => {
       view.end = N - 1; view.span = 90;
       tip.style.display = 'none';
       draw();
-    } else {                             // 單點：讀數
+    } else {                             // 單點：讀數（手動模式下先設錨點）
       tLastTap = now;
       const r = cv.getBoundingClientRect();
-      showHover(ev.changedTouches[0].clientX - r.left, ev.changedTouches[0].clientY - r.top);
+      const mx = ev.changedTouches[0].clientX - r.left, my = ev.changedTouches[0].clientY - r.top;
+      if (anchorMode === 'manual') {
+        const i = barAt(mx);
+        if (i >= 0) setAnchor('manual', i);
+      }
+      showHover(mx, my);
     }
   }
   if (!ev.touches.length) tMode = null;
@@ -706,7 +733,7 @@ document.querySelectorAll('#anchorChips .chip').forEach(el => {
   el.addEventListener('click', () => {
     document.querySelectorAll('#anchorChips .chip').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
-    setAnchor(el.dataset.a);
+    setAnchor(el.dataset.a, anchorIdx);
     draw();
   });
 });
