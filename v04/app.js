@@ -169,7 +169,7 @@ function setAnchor(type, idx) {
     ' <b class="' + (type === 'low' ? 'dn' : 'up') + '">' +
     (type === 'low' ? L(bi) : H(bi)).toFixed(0) + '</b>';
 }
-setAnchor('low');
+// 初始錨點在 D9 預警計算完成後設定（見下方 setAnchor('low') 調用）
 
 /* ---------- D9 转折点预警（合成指标） ---------- */
 // 南向资金对齐 & 分位
