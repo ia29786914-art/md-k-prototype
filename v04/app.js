@@ -128,11 +128,18 @@ for (const z of wz.zones) {
 const FIBS = [8, 13, 21, 34, 55, 89, 144];
 let anchorIdx = 0;
 let anchorMode = 'low';
+let manualAnchors = [];
 function setAnchor(type, idx) {
   anchorMode = type;
   if (type === 'manual') {
-    anchorIdx = idx;
-    document.getElementById('anchorInfo').innerHTML = '锚点：<b>' + D(idx) + '</b> 手动指定 · 点击/点按图面移动锚点';
+    if (manualAnchors.length >= 3) manualAnchors.shift();
+    manualAnchors.push(idx);
+    anchorIdx = manualAnchors[0];
+    const MCOL = ['#fbbf24', '#22d3ee', '#f472b6'];
+    document.getElementById('anchorInfo').innerHTML =
+      '手动锚点 · 点击图面添加（最多 3 个，满后替换最早）：<br>' +
+      manualAnchors.map((a, k) => '<b style="color:' + MCOL[k] + '">锚' + (k + 1) + '</b> <b>' +
+        D(a) + '</b> 收 ' + C(a).toFixed(0)).join('<br>');
     return;
   }
   // 頂 = 最近兩個底警之間的最高點；底 = 最近兩個頂警之間的最低點
@@ -392,21 +399,28 @@ function draw() {
   // --- D5 Fib 时间线 ---
   if (dim.fib && !dim.classic) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    for (const f of FIBS) {
-      const i = anchorIdx + f;
-      if (i < s || i > Math.min(e, N - 1)) continue;
-      ctx.strokeStyle = 'rgba(251,191,36,.35)'; ctx.setLineDash([4, 4]);
-      ctx.beginPath(); ctx.moveTo(LX(i), PAD_T); ctx.lineTo(LX(i), stripY); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillText('F' + f, LX(i), PAD_T + 3);
-    }
-    if (anchorIdx >= s && anchorIdx <= e) {
-      ctx.strokeStyle = 'rgba(251,191,36,.8)';
-      ctx.beginPath(); ctx.moveTo(LX(anchorIdx), PAD_T); ctx.lineTo(LX(anchorIdx), stripY); ctx.stroke();
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillText('锚 ' + D(anchorIdx).slice(5), LX(anchorIdx), stripY - 14);
-    }
+    const MCOL = ['#fbbf24', '#22d3ee', '#f472b6'];
+    const sets = anchorMode === 'manual'
+      ? manualAnchors.map((a, k) => ({ a, col: MCOL[k] }))
+      : [{ a: anchorIdx, col: MCOL[0] }];
+    sets.forEach(({ a, col }, k) => {
+      for (const f of FIBS) {
+        const i = a + f;
+        if (i < s || i > Math.min(e, N - 1)) continue;
+        ctx.strokeStyle = col + '59'; ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(LX(i), PAD_T); ctx.lineTo(LX(i), stripY); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = col;
+        ctx.fillText('F' + f, LX(i), PAD_T + 3);
+      }
+      if (a >= s && a <= e) {
+        ctx.strokeStyle = col + 'cc';
+        ctx.beginPath(); ctx.moveTo(LX(a), PAD_T); ctx.lineTo(LX(a), stripY); ctx.stroke();
+        ctx.fillStyle = col;
+        ctx.fillText((anchorMode === 'manual' ? '锚' + (k + 1) + ' ' : '锚 ') + D(a).slice(5),
+          LX(a), stripY - 14 - (anchorMode === 'manual' ? k * 11 : 0));
+      }
+    });
   }
 
   // --- D4 日线中枢色带 ---
@@ -589,8 +603,10 @@ function showHover(mx, my) {
   // 悬浮读数
   const chg = (C(i) - O(i)) / O(i) * 100;
   const upCls = C(i) >= O(i) ? 'up' : 'dn';
-  const fibHit = FIBS.includes(i - anchorIdx)
-    ? `<div class="row"><span class="k">Fib时间窗</span><span class="v am">F${i - anchorIdx}</span></div>` : '';
+  const fibAnchors = anchorMode === 'manual' ? manualAnchors : [anchorIdx];
+  const fibOff = fibAnchors.map(a => i - a).find(d => FIBS.includes(d));
+  const fibHit = fibOff !== undefined
+    ? `<div class="row"><span class="k">Fib时间窗</span><span class="v am">F${fibOff}</span></div>` : '';
   const fracTxt = frac[i] === 1 ? '<span class="v" style="color:#818cf8">顶分型 ▲</span>'
     : frac[i] === -1 ? '<span class="v" style="color:#a5b4fc">底分型 ▼</span>' : '<span class="v">—</span>';
   const B = BREADTH[i];
@@ -745,8 +761,10 @@ document.querySelectorAll('.dim').forEach(el => {
 });
 document.querySelectorAll('#anchorChips .chip').forEach(el => {
   el.addEventListener('click', () => {
+    if (el.classList.contains('active')) return;
     document.querySelectorAll('#anchorChips .chip').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
+    if (el.dataset.a === 'manual') manualAnchors = [];
     setAnchor(el.dataset.a, anchorIdx);
     draw();
   });
