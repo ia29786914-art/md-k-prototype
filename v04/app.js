@@ -135,11 +135,7 @@ function setAnchor(type, idx) {
     if (manualAnchors.length >= 3) manualAnchors.shift();
     manualAnchors.push(idx);
     anchorIdx = manualAnchors[0];
-    const MCOL = ['#fbbf24', '#22d3ee', '#f472b6'];
-    document.getElementById('anchorInfo').innerHTML =
-      '手动锚点 · 点击图面添加（最多 3 个，满后替换最早）：<br>' +
-      manualAnchors.map((a, k) => '<b style="color:' + MCOL[k] + '">锚' + (k + 1) + '</b> <b>' +
-        D(a) + '</b> 收 ' + C(a).toFixed(0)).join('<br>');
+    refreshManualInfo();
     return;
   }
   // 頂 = 最近兩個底警之間的最高點；底 = 最近兩個頂警之間的最低點
@@ -175,6 +171,14 @@ function setAnchor(type, idx) {
   document.getElementById('anchorInfo').innerHTML = '锚点：<b>' + D(bi) + '</b> ' + label +
     ' <b class="' + (type === 'low' ? 'dn' : 'up') + '">' +
     (type === 'low' ? L(bi) : H(bi)).toFixed(0) + '</b>';
+}
+function refreshManualInfo() {
+  const MCOL = ['#fbbf24', '#22d3ee', '#f472b6'];
+  document.getElementById('anchorInfo').innerHTML =
+    '手动锚点 · 点击图面添加（最多 3 个，满后替换最早），点 × 移除：<br>' +
+    manualAnchors.map((a, k) => '<b style="color:' + MCOL[k] + '">锚' + (k + 1) + '</b> <b>' +
+      D(a) + '</b> 收 ' + C(a).toFixed(0) +
+      ' <span class="rmA" data-k="' + k + '" style="cursor:pointer;color:#f87171">×</span>').join('<br>');
 }
 // 初始錨點在 D9 預警計算完成後設定（見下方 setAnchor('low') 調用）
 
@@ -768,6 +772,20 @@ document.querySelectorAll('#anchorChips .chip').forEach(el => {
     setAnchor(el.dataset.a, anchorIdx);
     draw();
   });
+});
+document.getElementById('anchorInfo').addEventListener('click', ev => {
+  const t = ev.target.closest ? ev.target.closest('.rmA') : null;
+  if (!t || anchorMode !== 'manual') return;
+  manualAnchors.splice(+t.dataset.k, 1);
+  if (manualAnchors.length) {
+    anchorIdx = manualAnchors[0];
+    refreshManualInfo();
+  } else {
+    document.querySelectorAll('#anchorChips .chip')
+      .forEach(c => c.classList.toggle('active', c.dataset.a === 'low'));
+    setAnchor('low');
+  }
+  draw();
 });
 
 document.getElementById('hdrRange').textContent = D(0) + ' → ' + D(N - 1);
