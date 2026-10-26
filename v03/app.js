@@ -611,6 +611,14 @@ function showHover(mx, my) {
     : `<span class="v" style="color:${sbVal[i] >= 0 ? '#22d3ee' : '#fb923c'}">${sbVal[i] >= 0 ? '+' : ''}${(sbVal[i] / 100).toFixed(1)}亿 (${(sbPct[i] * 100).toFixed(0)}%分位)</span>`;
   const alertTxt = botScore[i] >= 3 ? `<span class="v" style="color:#34d399">底警 ${botScore[i]}/4</span>`
     : topScore[i] >= 2 ? `<span class="v am">顶警 ${topScore[i]}/3</span>` : '<span class="v">—</span>';
+  const legRow = (nm, ok) => `<div class="row"><span class="k">　${nm}</span>` +
+    `<span class="v" style="color:${ok ? '#34d399' : '#f87171'}">${ok ? '✓ 满足' : '✗ 不满足'}</span></div>`;
+  const botLegs = [['放量恐慌', volPct[i] >= .85], ['恐慌收盘', strength[i] <= .20],
+    ['高波环境', atrPct[i] >= .60], ['南向抄底', sbPct[i] >= .60]];
+  const topLegs = [['广度背离', divSlow[i]], ['赶顶阳线', strength[i] >= .85 && chgPct[i] >= 1],
+    ['南向流出/放量', sbPct[i] <= .15 || volPct[i] >= .85]];
+  const alertLegs = botScore[i] >= 3 ? botLegs.map(l => legRow(l[0], l[1])).join('')
+    : topScore[i] >= 2 ? topLegs.map(l => legRow(l[0], l[1])).join('') : '';
   tip.innerHTML =
     `<div class="d">${D(i)}</div>` +
     `<div class="row"><span class="k">开 / 高</span><span class="v">${O(i).toFixed(0)} / ${H(i).toFixed(0)}</span></div>` +
@@ -625,7 +633,7 @@ function showHover(mx, my) {
     `<div class="row"><span class="k">最大贡献</span><span class="v">${B[3]} ${B[4] >= 0 ? '+' : ''}${B[4]}bp</span></div>` + div +
     `<div class="row"><span class="k">D8 级别</span>${wkTxt}</div>` +
     `<div class="row"><span class="k">D9 南向净买</span>${sbTxt}</div>` +
-    `<div class="row"><span class="k">D9 预警</span>${alertTxt}</div>` + fibHit;
+    `<div class="row"><span class="k">D9 预警</span>${alertTxt}</div>` + alertLegs + fibHit;
   tip.style.display = 'block';
   const tw = tip.offsetWidth, th = tip.offsetHeight;
   tip.style.left = (mx + 18 + tw > W ? mx - tw - 14 : mx + 18) + 'px';
