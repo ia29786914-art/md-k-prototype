@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>多維度K線原型 · 版本選擇</title>
 <style>
-:root{--bg:#050810;--panel:#0c1220;--line:#1a2540;--cy:#22d3ee;--up:#f87171;--dn:#34d399;--am:#fbbf24;--vi:#818cf8;--t1:#e2e8f0;--t2:#94a3b8;--t3:#64748b}
+:root{--bg:#050810;--panel:#0c1220;--line:#1a2540;--cy:#22d3ee;--up:#34d399;--dn:#f87171;--am:#fbbf24;--vi:#818cf8;--t1:#e2e8f0;--t2:#94a3b8;--t3:#64748b}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--t1);font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace,"PingFang HK","PingFang TC","Microsoft JhengHei",sans-serif;min-height:100vh;display:flex;flex-direction:column}
 body::before{content:"";position:fixed;inset:0;pointer-events:none;
@@ -43,12 +43,12 @@ footer{padding:0 32px 22px;text-align:center;font-size:11px;color:var(--t3);line
 <body>
 <header>
   <div class="logo"><span class="radar"></span>HSI <em>MD-K</em> 多維度K線原型</div>
-  <div class="badge">恒生指數 · 日線 · 數據截至 2026-11-06</div>
+  <div class="badge">恒生指數 · 日線 · 數據截至 2026-10-12</div>
 </header>
 
 <main>
   <h1>多維度K線 · <span>雙版本工作台</span></h1>
-  <p class="sub">兩個版本共用同一份最新數據（恒指日線 1685 根，2020-01-02 → 2026-11-06 · 12 隻權重股廣度籃子 · 南向資金至 2026-11-06）。v0.3 保留原始 9 維編碼全貌，v0.4 在 v0.3 基礎上按兩年回測結論收斂預警參數。</p>
+  <p class="sub">兩個版本共用同一份最新數據（恒指日線 1667 根，2020-01-02 → 2026-10-12 · 12 隻權重股廣度籃子 · 南向資金至 2026-10-12）。v0.3 保留原始 9 維編碼全貌，v0.4 在 v0.3 基礎上按兩年回測結論收斂預警參數。</p>
 
   <div class="cards">
     <a class="card v3" href="v03/index.html">
@@ -79,7 +79,7 @@ footer{padding:0 32px 22px;text-align:center;font-size:11px;color:var(--t3);line
 
 <footer>
   數據源：Yahoo Finance（^HSI 及權重股）· 東方財富陸港通（南向淨買入，百萬港元）<br>
-  紅漲綠跌（港股慣例）· 僅作研究原型，不構成投資建議
+  綠漲紅跌 · 僅作研究原型，不構成投資建議
 </footer>
 </body>
 </html>
