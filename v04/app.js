@@ -302,10 +302,10 @@ const LW = i => lay.ws[i - lay.s];
 /* ---------- 颜色 ---------- */
 function candleColor(i) {
   const up = C(i) >= O(i);
-  if (dim.classic || !dim.sat) return up ? '#f87171' : '#34d399';
+  if (dim.classic || !dim.sat) return up ? '#34d399' : '#f87171';
   const s = up ? strength[i] : 1 - strength[i];
   const sat = 28 + 62 * s, lit = 46 + 16 * s;
-  return up ? `hsl(4 ${sat}% ${lit}%)` : `hsl(160 ${sat * .9}% ${lit * .8}%)`;
+  return up ? `hsl(160 ${sat * .9}% ${lit * .8}%)` : `hsl(4 ${sat}% ${lit}%)`;
 }
 function candleWidth(i) {
   const slot = LW(i);
@@ -315,8 +315,8 @@ function candleWidth(i) {
   return slot * (.30 + .70 * (r - .25) / (2.2 - .25));
 }
 function breadthColor(b) {
-  if (b >= 50) { const t = (b - 50) / 50; return `hsl(4 ${30 + 60 * t}% ${30 + 22 * t}%)`; }
-  const t = (50 - b) / 50; return `hsl(160 ${30 + 55 * t}% ${28 + 20 * t}%)`;
+  if (b >= 50) { const t = (b - 50) / 50; return `hsl(160 ${30 + 55 * t}% ${28 + 20 * t}%)`; }
+  const t = (50 - b) / 50; return `hsl(4 ${30 + 60 * t}% ${30 + 22 * t}%)`;
 }
 
 /* ---------- 绘制 ---------- */
@@ -342,7 +342,7 @@ function draw() {
       if (st !== 0) {
         const x1 = LX(i) - LW(i) / 2, x2 = LX(j) + LW(j) / 2;
         ctx.fillStyle = st === 2 ? 'rgba(139,92,246,.07)'
-          : st === 1 ? 'rgba(248,113,113,.045)' : 'rgba(52,211,153,.045)';
+          : st === 1 ? 'rgba(52,211,153,.045)' : 'rgba(248,113,113,.045)';
         ctx.fillRect(x1, PAD_T, x2 - x1, plotH);
       }
       i = j + 1;
@@ -470,7 +470,7 @@ function draw() {
     let fill = col;
     if (!dim.classic && dim.sat) {
       const g = ctx.createLinearGradient(0, bodyT, 0, bodyT + bodyH);
-      const strong = `hsl(${up ? 4 : 160} 95% ${up ? 66 : 56}%)`;
+      const strong = `hsl(${up ? 160 : 4} 95% ${up ? 56 : 66}%)`;
       g.addColorStop(up ? 1 : 0, strong);
       g.addColorStop(up ? 0 : 1, col);
       fill = g;
@@ -566,7 +566,7 @@ function draw() {
   const lastC = C(N - 1);
   if (lastC > lo && lastC < hi) {
     const y = Y(lastC);
-    ctx.fillStyle = C(N - 1) >= O(N - 1) ? '#f87171' : '#34d399';
+    ctx.fillStyle = C(N - 1) >= O(N - 1) ? '#34d399' : '#f87171';
     ctx.fillRect(W - PAD_R + 2, y - 8, PAD_R - 6, 16);
     ctx.fillStyle = '#050810'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText(lastC.toFixed(0), W - PAD_R + 7, y);
