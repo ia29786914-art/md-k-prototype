@@ -706,25 +706,61 @@ function barAt(mx) {
     if (mx >= LX(k) - LW(k) / 2 && mx < LX(k) + LW(k) / 2) return k;
   return -1;
 }
-/* D10 黄金比例回撤：点击取点（最多两点，再点重新开始） */
+/* D10 黄金比例回撤：点击取点（最多两点，再点重新开始），锚点可拖曳微调 */
 let fibPts = [];
-function addFibPt(mx, my) {
+let dragFib = null, fibDragged = false;
+function fibPtAt(mx, my) {
   const i = barAt(mx);
   const plotB = Hh - PAD_B - STRIP_H - SB_H;
-  if (i < 0 || my < PAD_T || my > plotB) return;
+  if (i < 0 || my < PAD_T || my > plotB) return null;
   const [s, e] = visibleRange();
   let hi = -Infinity, lo = Infinity;
   for (let k = s; k <= e; k++) { hi = Math.max(hi, H(k)); lo = Math.min(lo, L(k)); }
   const pad = (hi - lo) * .07 || 1; hi += pad; lo -= pad;
   const p = hi - (my - PAD_T) / (plotB - PAD_T) * (hi - lo);
+  return { i, p };
+}
+function fibY(p) {   // 與 draw() 相同的價格→像素映射（含 7% 可視邊距）
+  const plotB = Hh - PAD_B - STRIP_H - SB_H;
+  const [s, e] = visibleRange();
+  let hi = -Infinity, lo = Infinity;
+  for (let k = s; k <= e; k++) { hi = Math.max(hi, H(k)); lo = Math.min(lo, L(k)); }
+  const pad = (hi - lo) * .07 || 1; hi += pad; lo -= pad;
+  return PAD_T + (hi - p) / (hi - lo) * (plotB - PAD_T);
+}
+function fibHit(mx, my) {
+  if (!dim.fibtool) return null;
+  for (let k = 0; k < fibPts.length; k++) {
+    const qx = LX(Math.max(0, Math.min(N - 1, fibPts[k].i))), qy = fibY(fibPts[k].p);
+    if (Math.hypot(mx - qx, my - qy) < 10) return k;
+  }
+  return null;
+}
+function addFibPt(mx, my) {
+  const pt = fibPtAt(mx, my);
+  if (!pt) return;
   if (fibPts.length >= 2) fibPts = [];
-  fibPts.push({ i, p });
+  fibPts.push(pt);
   draw();
 }
 let dragX = null, dragMoved = 0;
-cv.addEventListener('mousedown', ev => { dragX = ev.clientX; dragMoved = 0; cv.style.cursor = 'grabbing'; });
-window.addEventListener('mouseup', () => { dragX = null; cv.style.cursor = 'crosshair'; });
+cv.addEventListener('mousedown', ev => {
+  fibDragged = false;
+  if (dim.fibtool) {
+    const r0 = cv.getBoundingClientRect();
+    const hit = fibHit(ev.clientX - r0.left, ev.clientY - r0.top);
+    if (hit !== null) { dragFib = hit; cv.style.cursor = 'grabbing'; return; }
+  }
+  dragX = ev.clientX; dragMoved = 0; cv.style.cursor = 'grabbing';
+});
+window.addEventListener('mouseup', () => { dragX = null; dragFib = null; cv.style.cursor = 'crosshair'; });
 window.addEventListener('mousemove', ev => {
+  if (dragFib !== null) {
+    const r0 = cv.getBoundingClientRect();
+    const pt = fibPtAt(ev.clientX - r0.left, ev.clientY - r0.top);
+    if (pt) { fibPts[dragFib] = pt; fibDragged = true; draw(); }
+    return;
+  }
   if (dragX === null) return;
   dragMoved += Math.abs(ev.clientX - dragX);
   const plotW = W - PAD_L - PAD_R, slot = plotW / view.span;
@@ -738,7 +774,7 @@ cv.addEventListener('click', ev => {
   if (dragMoved >= 5) return;
   const r = cv.getBoundingClientRect();
   const mx = ev.clientX - r.left, my = ev.clientY - r.top;
-  if (dim.fibtool) { addFibPt(mx, my); showHover(mx, my); return; }
+  if (dim.fibtool) { if (!fibDragged) addFibPt(mx, my); showHover(mx, my); return; }
   if (anchorMode !== 'manual') return;
   const i = barAt(mx);
   if (i < 0) return;
@@ -756,15 +792,21 @@ cv.addEventListener('dblclick', () => { view.end = N - 1; view.span = 90; draw()
 
 /* ---------- 交互：觸控（手機） ---------- */
 let tMode = null, tStartX = 0, tStartY = 0, tStartEnd = 0, tDist0 = 0, tSpan0 = 0,
-    tMoved = 0, tLastTap = 0;
+    tMoved = 0, tLastTap = 0, tFibIdx = 0;
 const clampEnd = () => {
   view.end = Math.max(view.span * .5, Math.min(N - 1 + view.span * .3, view.end));
 };
 cv.addEventListener('touchstart', ev => {
   if (ev.touches.length === 1) {
-    tMode = 'pan'; tMoved = 0;
-    tStartX = ev.touches[0].clientX; tStartY = ev.touches[0].clientY;
-    tStartEnd = view.end;
+    tMoved = 0;
+    const r0 = cv.getBoundingClientRect();
+    const hit = dim.fibtool ? fibHit(ev.touches[0].clientX - r0.left, ev.touches[0].clientY - r0.top) : null;
+    if (hit !== null) { tMode = 'fibdrag'; tFibIdx = hit; }
+    else {
+      tMode = 'pan';
+      tStartX = ev.touches[0].clientX; tStartY = ev.touches[0].clientY;
+      tStartEnd = view.end;
+    }
   } else if (ev.touches.length === 2) {
     tMode = 'pinch';
     tDist0 = Math.hypot(ev.touches[0].clientX - ev.touches[1].clientX,
@@ -775,7 +817,11 @@ cv.addEventListener('touchstart', ev => {
 }, { passive: true });
 cv.addEventListener('touchmove', ev => {
   ev.preventDefault();
-  if (tMode === 'pan' && ev.touches.length === 1) {
+  if (tMode === 'fibdrag' && ev.touches.length === 1) {
+    const r0 = cv.getBoundingClientRect();
+    const pt = fibPtAt(ev.touches[0].clientX - r0.left, ev.touches[0].clientY - r0.top);
+    if (pt) { fibPts[tFibIdx] = pt; draw(); }
+  } else if (tMode === 'pan' && ev.touches.length === 1) {
     const dx = ev.touches[0].clientX - tStartX;
     tMoved = Math.max(tMoved, Math.abs(dx) + Math.abs(ev.touches[0].clientY - tStartY));
     const slot = (W - PAD_L - PAD_R) / view.span;
