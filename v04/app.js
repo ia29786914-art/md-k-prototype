@@ -253,7 +253,8 @@ const PAD_R = 64, PAD_B = 26, PAD_T = 14, PAD_L = 8, STRIP_H = 14, SB_H = 12;
 
 const view = { end: N - 1, span: 90 };
 const dim = { width: true, sat: true, atr: true, chan: true, fib: true,
-              breadth: true, eqvol: false, weekly: true, alert: true, classic: false };
+              breadth: true, eqvol: false, weekly: true, alert: true, classic: false,
+              fibtool: false };
 
 // 当前布局缓存（供 hover 反查）
 let lay = { xs: [], ws: [], s: 0, e: 0 };
@@ -425,6 +426,43 @@ function draw() {
           LX(a), stripY - 14 - (anchorMode === 'manual' ? k * 11 : 0));
       }
     });
+  }
+
+  // --- D10 黄金比例回撤（手动两点定位） ---
+  if (dim.fibtool && fibPts.length) {
+    const plotB2 = PAD_T + plotH;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    for (const q of fibPts) {
+      const qy = Y(q.p);
+      if (qy < PAD_T || qy > plotB2) continue;
+      const qx = LX(Math.max(s, Math.min(e, q.i)));
+      ctx.fillStyle = 'rgba(251,191,36,.95)';
+      ctx.beginPath(); ctx.arc(qx, qy, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(5,8,16,.9)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(qx, qy, 3.5, 0, Math.PI * 2); ctx.stroke();
+    }
+    if (fibPts.length === 2) {
+      const fh = Math.max(fibPts[0].p, fibPts[1].p), fl = Math.min(fibPts[0].p, fibPts[1].p);
+      const LV = [[0, '0%'], [.236, '23.6%'], [.382, '38.2%'], [.5, '50%'],
+                  [.618, '61.8%'], [.786, '78.6%'], [1, '100%'], [1.618, '161.8%']];
+      ctx.font = '10px "JetBrains Mono",monospace';
+      for (const [r, tag] of LV) {
+        const pr = fl + (fh - fl) * r;
+        const y = Y(pr);
+        if (y < PAD_T || y > plotB2) continue;
+        ctx.strokeStyle = (r === 0 || r === 1) ? 'rgba(251,191,36,.55)' : 'rgba(251,191,36,.3)';
+        ctx.setLineDash([5, 5]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(W - PAD_R, y); ctx.stroke();
+        ctx.setLineDash([]);
+        const label = tag + ' ' + pr.toFixed(0), lw2 = 78;
+        ctx.fillStyle = 'rgba(12,18,32,.88)';
+        ctx.fillRect(W - PAD_R - lw2, y - 8, lw2, 16);
+        ctx.strokeStyle = 'rgba(251,191,36,.45)';
+        ctx.strokeRect(W - PAD_R - lw2, y - 8, lw2, 16);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText(label, W - PAD_R - lw2 + 5, y);
+      }
+    }
   }
 
   // --- D4 日线中枢色带 ---
@@ -666,6 +704,21 @@ function barAt(mx) {
     if (mx >= LX(k) - LW(k) / 2 && mx < LX(k) + LW(k) / 2) return k;
   return -1;
 }
+/* D10 黄金比例回撤：点击取点（最多两点，再点重新开始） */
+let fibPts = [];
+function addFibPt(mx, my) {
+  const i = barAt(mx);
+  const plotB = Hh - PAD_B - STRIP_H - SB_H;
+  if (i < 0 || my < PAD_T || my > plotB) return;
+  const [s, e] = visibleRange();
+  let hi = -Infinity, lo = Infinity;
+  for (let k = s; k <= e; k++) { hi = Math.max(hi, H(k)); lo = Math.min(lo, L(k)); }
+  const pad = (hi - lo) * .07 || 1; hi += pad; lo -= pad;
+  const p = hi - (my - PAD_T) / (plotB - PAD_T) * (hi - lo);
+  if (fibPts.length >= 2) fibPts = [];
+  fibPts.push({ i, p });
+  draw();
+}
 let dragX = null, dragMoved = 0;
 cv.addEventListener('mousedown', ev => { dragX = ev.clientX; dragMoved = 0; cv.style.cursor = 'grabbing'; });
 window.addEventListener('mouseup', () => { dragX = null; cv.style.cursor = 'crosshair'; });
@@ -680,12 +733,15 @@ window.addEventListener('mousemove', ev => {
   draw();
 });
 cv.addEventListener('click', ev => {
-  if (anchorMode !== 'manual' || dragMoved >= 5) return;
+  if (dragMoved >= 5) return;
   const r = cv.getBoundingClientRect();
-  const i = barAt(ev.clientX - r.left);
+  const mx = ev.clientX - r.left, my = ev.clientY - r.top;
+  if (dim.fibtool) { addFibPt(mx, my); showHover(mx, my); return; }
+  if (anchorMode !== 'manual') return;
+  const i = barAt(mx);
   if (i < 0) return;
   setAnchor('manual', i);
-  showHover(ev.clientX - r.left, ev.clientY - r.top);
+  showHover(mx, my);
 });
 cv.addEventListener('wheel', ev => {
   ev.preventDefault();
@@ -746,7 +802,8 @@ cv.addEventListener('touchend', ev => {
       tLastTap = now;
       const r = cv.getBoundingClientRect();
       const mx = ev.changedTouches[0].clientX - r.left, my = ev.changedTouches[0].clientY - r.top;
-      if (anchorMode === 'manual') {
+      if (dim.fibtool) addFibPt(mx, my);
+      else if (anchorMode === 'manual') {
         const i = barAt(mx);
         if (i >= 0) setAnchor('manual', i);
       }
