@@ -254,7 +254,7 @@ const PAD_R = 64, PAD_B = 26, PAD_T = 14, PAD_L = 8, STRIP_H = 14, SB_H = 12;
 const view = { end: N - 1, span: 90 };
 const dim = { width: true, sat: true, atr: true, chan: true, fib: true,
               breadth: true, eqvol: false, weekly: true, alert: true, classic: false,
-              fibtool: false, fibext: false };
+              fibtool: false, fibext: false, fibdown: false };
 
 // 当前布局缓存（供 hover 反查）
 let lay = { xs: [], ws: [], s: 0, e: 0 };
@@ -446,12 +446,13 @@ function draw() {
       const LV = [[0, '0%'], [.236, '23.6%'], [.382, '38.2%'], [.5, '50%'],
                   [.618, '61.8%'], [.786, '78.6%'], [1, '100%'], [1.618, '161.8%']];
       if (dim.fibext) LV.push([2.618, '261.8%'], [4.236, '423.6%']);
+      if (dim.fibdown) LV.push([-.236, '-23.6%'], [-.382, '-38.2%']);
       ctx.font = '10px "JetBrains Mono",monospace';
       for (const [r, tag] of LV) {
         const pr = fl + (fh - fl) * r;
         const y = Y(pr);
         if (y < PAD_T || y > plotB2) continue;
-        ctx.strokeStyle = (r === 0 || r === 1) ? 'rgba(251,191,36,.55)' : 'rgba(251,191,36,.3)';
+        ctx.strokeStyle = (r === 0 || r === 1) ? 'rgba(251,191,36,.55)' : (r < 0 ? 'rgba(248,113,113,.35)' : 'rgba(251,191,36,.3)');
         ctx.setLineDash([5, 5]); ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(W - PAD_R, y); ctx.stroke();
         ctx.setLineDash([]);
