@@ -923,6 +923,10 @@ document.getElementById('anchorInfo').addEventListener('click', ev => {
   }
   draw();
 });
+const fibClearBtn = document.getElementById('fibClear');
+if (fibClearBtn) fibClearBtn.addEventListener('click', () => {
+  fibSets = []; fibPts = []; draw();
+});
 
 document.getElementById('hdrRange').textContent = D(0) + ' → ' + D(N - 1);
 document.getElementById('hdrN').textContent = N;
