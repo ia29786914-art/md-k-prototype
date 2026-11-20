@@ -425,6 +425,7 @@ function draw() {
   }
 
   // --- D10 黄金比例回撤（手动两点定位，最多三组，自动分色） ---
+  syncFibBar();
   if (dim.fibtool && (fibSets.length || fibPts.length)) {
     const plotB2 = PAD_T + plotH;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
@@ -916,6 +917,7 @@ const FIB_DOT_C = ['#fbbf24', '#38bdf8', '#f472b6'];
 const fibBar = document.getElementById('fibBar');
 function syncFibBar() {
   if (!fibBar) return;
+  fibBar.style.display = (dim.fibtool && (fibSets.length || fibPts.length)) ? 'flex' : 'none';
   fibBar.querySelectorAll('.fibDot').forEach((d, k) => {
     const has = k < fibSets.length;
     d.style.background = (has && fibVis[k]) ? FIB_DOT_C[k] : 'transparent';
