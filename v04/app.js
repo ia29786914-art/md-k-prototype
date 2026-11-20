@@ -468,7 +468,7 @@ function draw() {
         ctx.fillText(label, W - PAD_R - lw2 + 5, y);
       }
     };
-    fibSets.forEach((set, ci) => drawFibSet(set, ci));
+    fibSets.forEach((set, ci) => { if (fibVis[ci]) drawFibSet(set, ci); });
     drawFibSet(fibPts, fibSets.length);
   }
 
@@ -714,6 +714,7 @@ function barAt(mx) {
 /* D10 黄金比例回撤：点击取点（最多两点，再点重新开始），锚点可拖曳微调 */
 let fibSets = [];          // 已完成的分組（最多 3 組，每組兩點，自動以不同顏色區分）
 let fibPts = [];           // 進行中的分組（0 或 1 點）
+let fibVis = [true, true, true];   // 每組獨立顯示開關
 let dragFib = null, fibDragged = false;
 function fibPtAt(mx, my) {
   const i = barAt(mx);
@@ -751,13 +752,14 @@ function fibHit(mx, my) {
 function addFibPt(mx, my) {
   const pt = fibPtAt(mx, my);
   if (!pt) return;
-  if (!fibPts.length && fibSets.length >= 3) fibSets = [];   // 畫滿三組後再點：清空重來
+  if (!fibPts.length && fibSets.length >= 3) { fibSets = []; fibVis = [true, true, true]; }   // 畫滿三組後再點：清空重來
   fibPts.push(pt);
   if (fibPts.length === 2) {
-    if (fibSets.length >= 3) fibSets = [];
+    if (fibSets.length >= 3) { fibSets = []; fibVis = [true, true, true]; }
     fibSets.push(fibPts);
     fibPts = [];
   }
+  syncFibBar();
   draw();
 }
 let dragX = null, dragMoved = 0;
@@ -923,10 +925,36 @@ document.getElementById('anchorInfo').addEventListener('click', ev => {
   }
   draw();
 });
+/* D10 浮動控制列：三組獨立開關 + 清除全部 */
+const FIB_DOT_C = ['#fbbf24', '#38bdf8', '#f472b6'];
+const fibBar = document.getElementById('fibBar');
+function syncFibBar() {
+  if (!fibBar) return;
+  fibBar.querySelectorAll('.fibDot').forEach((d, k) => {
+    const has = k < fibSets.length;
+    d.style.background = (has && fibVis[k]) ? FIB_DOT_C[k] : 'transparent';
+    d.style.borderColor = FIB_DOT_C[k];
+    d.style.opacity = has ? (fibVis[k] ? 1 : .5) : .2;
+  });
+}
+function clearFib() {
+  fibSets = []; fibPts = []; fibVis = [true, true, true];
+  syncFibBar(); draw();
+}
+if (fibBar) {
+  fibBar.addEventListener('click', ev => {
+    const d = ev.target.closest ? ev.target.closest('.fibDot') : null;
+    if (!d) return;
+    const k = +d.dataset.k;
+    if (k >= fibSets.length) return;
+    fibVis[k] = !fibVis[k]; syncFibBar(); draw();
+  });
+}
+const fibClearTopBtn = document.getElementById('fibClearTop');
+if (fibClearTopBtn) fibClearTopBtn.addEventListener('click', clearFib);
+syncFibBar();
 const fibClearBtn = document.getElementById('fibClear');
-if (fibClearBtn) fibClearBtn.addEventListener('click', () => {
-  fibSets = []; fibPts = []; draw();
-});
+if (fibClearBtn) fibClearBtn.addEventListener('click', clearFib);
 
 document.getElementById('hdrRange').textContent = D(0) + ' → ' + D(N - 1);
 document.getElementById('hdrN').textContent = N;
