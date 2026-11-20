@@ -424,43 +424,48 @@ function draw() {
     });
   }
 
-  // --- D10 黄金比例回撤（手动两点定位） ---
-  if (dim.fibtool && fibPts.length) {
+  // --- D10 黄金比例回撤（手动两点定位，最多三组，自动分色） ---
+  if (dim.fibtool && (fibSets.length || fibPts.length)) {
     const plotB2 = PAD_T + plotH;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    for (const q of fibPts) {
-      const qy = Y(q.p);
-      if (qy < PAD_T || qy > plotB2) continue;
-      const qx = LX(Math.max(s, Math.min(e, q.i)));
-      ctx.fillStyle = 'rgba(251,191,36,.95)';
-      ctx.beginPath(); ctx.arc(qx, qy, 3.5, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = 'rgba(5,8,16,.9)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(qx, qy, 3.5, 0, Math.PI * 2); ctx.stroke();
-    }
-    if (fibPts.length === 2) {
-      const fh = Math.max(fibPts[0].p, fibPts[1].p), fl = Math.min(fibPts[0].p, fibPts[1].p);
+    ctx.font = '10px "JetBrains Mono",monospace';
+    const FIBC = ['251,191,36', '56,189,248', '244,114,182'];
+    const drawFibSet = (set, ci) => {
+      const col = FIBC[ci % 3];
+      for (const q of set) {
+        const qy = Y(q.p);
+        if (qy < PAD_T || qy > plotB2) continue;
+        const qx = LX(Math.max(s, Math.min(e, q.i)));
+        ctx.fillStyle = `rgba(${col},.95)`;
+        ctx.beginPath(); ctx.arc(qx, qy, 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(5,8,16,.9)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(qx, qy, 3.5, 0, Math.PI * 2); ctx.stroke();
+      }
+      if (set.length !== 2) return;
+      const fh = Math.max(set[0].p, set[1].p), fl = Math.min(set[0].p, set[1].p);
       const LV = [[0, '0%'], [.236, '23.6%'], [.382, '38.2%'], [.5, '50%'],
                   [.618, '61.8%'], [.786, '78.6%'], [1, '100%'], [1.618, '161.8%']];
       if (dim.fibext) LV.push([2.618, '261.8%'], [4.236, '423.6%']);
       if (dim.fibdown) LV.push([-.236, '-23.6%'], [-.382, '-38.2%']);
-      ctx.font = '10px "JetBrains Mono",monospace';
       for (const [r, tag] of LV) {
         const pr = fl + (fh - fl) * r;
         const y = Y(pr);
         if (y < PAD_T || y > plotB2) continue;
-        ctx.strokeStyle = (r === 0 || r === 1) ? 'rgba(251,191,36,.55)' : (r < 0 ? 'rgba(248,113,113,.35)' : 'rgba(251,191,36,.3)');
+        ctx.strokeStyle = (r === 0 || r === 1) ? `rgba(${col},.55)` : (r < 0 ? 'rgba(248,113,113,.35)' : `rgba(${col},.3)`);
         ctx.setLineDash([5, 5]); ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(W - PAD_R, y); ctx.stroke();
         ctx.setLineDash([]);
         const label = tag + ' ' + pr.toFixed(0), lw2 = 78;
         ctx.fillStyle = 'rgba(12,18,32,.88)';
         ctx.fillRect(W - PAD_R - lw2, y - 8, lw2, 16);
-        ctx.strokeStyle = 'rgba(251,191,36,.45)';
+        ctx.strokeStyle = `rgba(${col},.45)`;
         ctx.strokeRect(W - PAD_R - lw2, y - 8, lw2, 16);
-        ctx.fillStyle = '#fbbf24';
+        ctx.fillStyle = `rgb(${col})`;
         ctx.fillText(label, W - PAD_R - lw2 + 5, y);
       }
-    }
+    };
+    fibSets.forEach((set, ci) => drawFibSet(set, ci));
+    drawFibSet(fibPts, fibSets.length);
   }
 
   // --- D4 日线中枢色带 ---
@@ -693,7 +698,8 @@ function barAt(mx) {
   return -1;
 }
 /* D10 黄金比例回撤：点击取点（最多两点，再点重新开始），锚点可拖曳微调 */
-let fibPts = [];
+let fibSets = [];          // 已完成的分組（最多 3 組，每組兩點，自動以不同顏色區分）
+let fibPts = [];           // 進行中的分組（0 或 1 點）
 let dragFib = null, fibDragged = false;
 function fibPtAt(mx, my) {
   const i = barAt(mx);
@@ -716,17 +722,28 @@ function fibY(p) {   // 與 draw() 相同的價格→像素映射（含 7% 可�
 }
 function fibHit(mx, my) {
   if (!dim.fibtool) return null;
-  for (let k = 0; k < fibPts.length; k++) {
-    const qx = LX(Math.max(0, Math.min(N - 1, fibPts[k].i))), qy = fibY(fibPts[k].p);
-    if (Math.hypot(mx - qx, my - qy) < 10) return k;
+  for (let si = 0; si < fibSets.length; si++)
+    for (let pi = 0; pi < fibSets[si].length; pi++) {
+      const q = fibSets[si][pi];
+      const qx = LX(Math.max(0, Math.min(N - 1, q.i))), qy = fibY(q.p);
+      if (Math.hypot(mx - qx, my - qy) < 10) return { si, pi };
+    }
+  for (let pi = 0; pi < fibPts.length; pi++) {
+    const qx = LX(Math.max(0, Math.min(N - 1, fibPts[pi].i))), qy = fibY(fibPts[pi].p);
+    if (Math.hypot(mx - qx, my - qy) < 10) return { si: -1, pi };
   }
   return null;
 }
 function addFibPt(mx, my) {
   const pt = fibPtAt(mx, my);
   if (!pt) return;
-  if (fibPts.length >= 2) fibPts = [];
+  if (!fibPts.length && fibSets.length >= 3) fibSets = [];   // 畫滿三組後再點：清空重來
   fibPts.push(pt);
+  if (fibPts.length === 2) {
+    if (fibSets.length >= 3) fibSets = [];
+    fibSets.push(fibPts);
+    fibPts = [];
+  }
   draw();
 }
 let dragX = null, dragMoved = 0;
@@ -744,7 +761,10 @@ window.addEventListener('mousemove', ev => {
   if (dragFib !== null) {
     const r0 = cv.getBoundingClientRect();
     const pt = fibPtAt(ev.clientX - r0.left, ev.clientY - r0.top);
-    if (pt) { fibPts[dragFib] = pt; fibDragged = true; draw(); }
+    if (pt) {
+      if (dragFib.si < 0) fibPts[dragFib.pi] = pt; else fibSets[dragFib.si][dragFib.pi] = pt;
+      fibDragged = true; draw();
+    }
     return;
   }
   if (dragX === null) return;
@@ -806,7 +826,10 @@ cv.addEventListener('touchmove', ev => {
   if (tMode === 'fibdrag' && ev.touches.length === 1) {
     const r0 = cv.getBoundingClientRect();
     const pt = fibPtAt(ev.touches[0].clientX - r0.left, ev.touches[0].clientY - r0.top);
-    if (pt) { fibPts[tFibIdx] = pt; draw(); }
+    if (pt) {
+      if (tFibIdx.si < 0) fibPts[tFibIdx.pi] = pt; else fibSets[tFibIdx.si][tFibIdx.pi] = pt;
+      draw();
+    }
   } else if (tMode === 'pan' && ev.touches.length === 1) {
     const dx = ev.touches[0].clientX - tStartX;
     tMoved = Math.max(tMoved, Math.abs(dx) + Math.abs(ev.touches[0].clientY - tStartY));
