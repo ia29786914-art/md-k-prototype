@@ -39,6 +39,10 @@ header{height:46px;display:flex;align-items:center;gap:14px;padding:0 16px;
 @keyframes pulse{50%{opacity:.25}}
 .hdr-meta{margin-left:auto;font-size:11px;color:var(--t3);letter-spacing:.06em}
 .hdr-meta b{color:var(--t2);font-weight:500}
+#shotBtn{margin-left:12px;background:var(--bg2);border:1px solid var(--line);color:var(--t2);
+  font:inherit;font-size:11px;padding:5px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+#shotBtn:hover{border-color:var(--cyan);color:var(--t1)}
+#shotBtn:active{transform:scale(.94)}
 
 main{display:grid;grid-template-columns:272px 1fr;height:calc(100% - 46px - 30px)}
 
@@ -135,6 +139,7 @@ canvas{touch-action:none}
   <div class="logo"><span class="radar"></span>HSI <em>MD-K</em> 多维度K线原型</div>
   <div class="badge"><span class="dot"></span>恒生指数 · 日线 · v0.4 回测调优版</div>
   <div class="hdr-meta">数据源 <b>Yahoo Finance (^HSI)</b> · <b id="hdrRange"></b> · <b id="hdrN"></b> 根K线</div>
+  <button id="shotBtn" title="一鍵截圖 PNG">📷 截圖</button>
 </header>
 
 <main>
