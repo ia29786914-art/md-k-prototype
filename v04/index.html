@@ -89,6 +89,15 @@ canvas{display:block;width:100%;height:100%;cursor:crosshair}
 #tip .v{color:var(--t1);font-variant-numeric:tabular-nums}
 #tip .sep{border-top:1px dashed var(--line);margin:5px 0 4px}
 
+#fibBar{position:absolute;top:8px;right:8px;z-index:15;display:flex;gap:6px;align-items:center;
+  background:rgba(12,18,32,.78);border:1px solid var(--line);border-radius:8px;
+  backdrop-filter:blur(8px);padding:4px 7px}
+#fibBar button{width:15px;height:15px;border-radius:50%;border:1.5px solid;cursor:pointer;
+  padding:0;background:transparent;font-family:inherit}
+#fibBar .fibX{width:auto;height:auto;border:none;border-radius:6px;color:#f87171;
+  font-size:12px;line-height:1;padding:2px 5px;background:rgba(248,113,113,.10)}
+#fibBar .fibX:active{transform:scale(.92)}
+
 footer{height:30px;display:flex;align-items:center;gap:18px;padding:0 16px;
   border-top:1px solid var(--line);background:var(--bg1);font-size:10.5px;
   color:var(--t3);letter-spacing:.05em}
@@ -218,6 +227,12 @@ canvas{touch-action:none}
   <div id="stage">
     <canvas id="cv"></canvas>
     <div id="tip"></div>
+    <div id="fibBar">
+      <button class="fibDot" data-k="0" title="第1組 顯示/隱藏"></button>
+      <button class="fibDot" data-k="1" title="第2組 顯示/隱藏"></button>
+      <button class="fibDot" data-k="2" title="第3組 顯示/隱藏"></button>
+      <button class="fibX" id="fibClearTop" title="清除全部 Fib">✕</button>
+    </div>
   </div>
 </main>
 
