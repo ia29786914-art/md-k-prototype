@@ -471,6 +471,22 @@ function draw() {
     };
     fibSets.forEach((set, ci) => { if (fibVis[ci]) drawFibSet(set, ci); });
     drawFibSet(fibPts, fibSets.length);
+    // 圖例：每組一個彩色標籤，隱藏的組不顯示
+    let lgX = PAD_L + 6;
+    const lgY = PAD_T + 4;
+    for (let ci = 0; ci < fibSets.length; ci++) {
+      if (!fibVis[ci] || fibSets[ci].length !== 2) continue;
+      const col = FIBC[ci % 3], label = '组' + (ci + 1);
+      const bw = ctx.measureText(label).width + 22;
+      ctx.fillStyle = 'rgba(12,18,32,.78)';
+      ctx.fillRect(lgX, lgY, bw, 16);
+      ctx.strokeStyle = `rgba(${col},.45)`;
+      ctx.strokeRect(lgX, lgY, bw, 16);
+      ctx.fillStyle = `rgb(${col})`;
+      ctx.beginPath(); ctx.arc(lgX + 9, lgY + 8, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillText(label, lgX + 16, lgY + 8.5);
+      lgX += bw + 6;
+    }
   }
 
   // --- D4 日线中枢色带 ---
