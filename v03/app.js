@@ -960,6 +960,32 @@ syncFibBar();
 const fibClearBtn = document.getElementById('fibClear');
 if (fibClearBtn) fibClearBtn.addEventListener('click', clearFib);
 
+/* 一鍵截圖：標題列 + 圖表合成，匯出 PNG */
+const shotBtn = document.getElementById('shotBtn');
+if (shotBtn) shotBtn.addEventListener('click', () => {
+  const dpr = window.devicePixelRatio || 1;
+  const titleH = 30;
+  const out = document.createElement('canvas');
+  out.width = cv.width;
+  out.height = cv.height + titleH * dpr;
+  const octx = out.getContext('2d');
+  octx.scale(dpr, dpr);
+  octx.fillStyle = '#050810';
+  octx.fillRect(0, 0, W, titleH);
+  octx.fillStyle = 'rgba(255,255,255,.92)';
+  octx.font = '600 12px "JetBrains Mono","Microsoft YaHei",monospace';
+  octx.textAlign = 'left'; octx.textBaseline = 'middle';
+  octx.fillText('HSI 多维度K线 · ' + D(0) + ' → ' + D(N - 1) + ' · 数据截至 ' + D(N - 1), 12, titleH / 2 + .5);
+  octx.drawImage(cv, 0, titleH, W, Hh);
+  out.toBlob(b => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = 'MD-K_HSI_' + D(N - 1) + '.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }, 'image/png');
+});
+
 document.getElementById('hdrRange').textContent = D(0) + ' → ' + D(N - 1);
 document.getElementById('hdrN').textContent = N;
 resize();
